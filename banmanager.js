@@ -200,6 +200,6 @@ export default class BanManager extends DiscordBasePlugin {
     }
 
     getExpiration(days) {
-        return new Date(+(new Date()) + +(new Date(days * 24 * 3600 * 1000)))
+        return new Date(+(new Date()) + +(new Date(+days * 24 * 3600 * 1000)))
     }
 }
