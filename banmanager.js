@@ -85,6 +85,7 @@ export default class BanManager extends DiscordBasePlugin {
         this.onPlayerConnected = this.onPlayerConnected.bind(this);
         this.formatReason = this.formatReason.bind(this);
         this.addBan = this.addBan.bind(this);
+        this.removeBan = this.removeBan.bind(this);
         this.createModel = this.createModel.bind(this);
         this.getExpiration = this.getExpiration.bind(this);
         this.getPlayersByUsername = this.getPlayersByUsername.bind(this);
@@ -146,6 +147,12 @@ export default class BanManager extends DiscordBasePlugin {
 
                 this.addBan(steamID, player.name, player.steamID, this.getExpiration(commandSplit[ 2 ]), commandSplit.slice(3).join(' '));
                 break;
+            case 'remove':
+                if (await this.removeBan(commandSplit[ 1 ]))
+                    this.warn(steamID, `Successfully removed ban`)
+                else
+                    this.warn(steamID, `Could not remove ban`)
+                break;
             case 'help':
                 if (!isAdmin) return;
                 let msg = `!${this.options.commandPrefix}\n > add {username} {days} {reason}`;
@@ -187,13 +194,18 @@ export default class BanManager extends DiscordBasePlugin {
 
     async addBan(adminSteamID, username, steamID, expiration, reason) {
         // this.server.getAdminPermsBySteamID()
-        return await this.models.Bans.create({
+        const ban = await this.models.Bans.create({
             username: username,
             steamID: steamID,
             expiration: expiration,
             reason: reason,
-            adminSteamID: adminSteamID,
+            adminSteamID: adminSteamID
         })
+        this.kick(ban.steamID, this.formatReason(ban));
+        return ban;
+    }
+    async removeBan(banID) {
+        return await this.models.Bans.destroy({ where: { [ Op.or ]: { id: +banId, steamID: `${banID}` } }, force: true })
     }
 
     createModel(name, schema) {
