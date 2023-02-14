@@ -8,6 +8,6 @@ BanManager plugin for SquadJS.
     "enabled": true,
     "discordClient": "discord",
     "channelID": "112233445566778899",
-    "banMessageFormat": "Banned | Reason: {reason} | Duration: {duration}"
+    "banMessageFormat": "Ban ID: {ban_id} | Reason: {reason} | Duration: {duration}"
 }
 ```

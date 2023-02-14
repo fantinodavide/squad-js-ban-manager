@@ -22,13 +22,13 @@ export default class BanManager extends DiscordBasePlugin {
             database: {
                 required: true,
                 connector: 'sequelize',
-                description: 'The Sequelize connector to log server information to.',
+                description: 'The Sequelize connector.',
                 default: 'mysql'
             },
             banMessageFormat: {
                 required: false,
                 description: "",
-                default: "Banned | Reason: {reason} | Duration: {duration}"
+                default: "Ban ID: {ban_id} | Reason: {reason} | Duration: {duration}"
             }
         };
     }
@@ -70,6 +70,9 @@ export default class BanManager extends DiscordBasePlugin {
                 adminSteamID: {
                     type: DataTypes.STRING,
                     notNull: true
+                },
+                evidence: {
+                    type: DataTypes.STRING,
                 }
             },
             {
@@ -169,7 +172,7 @@ export default class BanManager extends DiscordBasePlugin {
 
     formatReason(ban) {
         const duration = Math.max(1, Math.round((ban.expiration - (new Date())) / 1000 / 3600 / 24)) + 'D';
-        return this.options.banMessageFormat.replace(/\{reason\}/gi, ban.reason).replace(/\{duration\}/gi, duration)
+        return this.options.banMessageFormat.replace(/\{reason\}/gi, ban.reason).replace(/\{duration\}/gi, duration).replace(/\{ban_id\}/gi, ban.id)
     }
 
     getPlayersByUsername(username) {
@@ -189,7 +192,7 @@ export default class BanManager extends DiscordBasePlugin {
             steamID: steamID,
             expiration: expiration,
             reason: reason,
-            adminSteamID: adminSteamID
+            adminSteamID: adminSteamID,
         })
     }
 
