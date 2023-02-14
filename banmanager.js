@@ -1,5 +1,6 @@
 import { DataTypes, Op } from 'sequelize';
 import DiscordBasePlugin from './discord-base-plugin.js';
+import SocketIOAPI from './socket-io-api.js';
 import Sequelize from 'sequelize';
 
 export default class BanManager extends DiscordBasePlugin {
@@ -29,6 +30,16 @@ export default class BanManager extends DiscordBasePlugin {
                 required: false,
                 description: "",
                 default: "Ban ID: {ban_id} | Reason: {reason} | Duration: {duration}"
+            },
+            enableBanListHosting: {
+                required: false,
+                description: "",
+                default: false
+            },
+            banListHttpPath: {
+                required: false,
+                description: "",
+                default: "/banlist"
             }
         };
     }
@@ -90,16 +101,31 @@ export default class BanManager extends DiscordBasePlugin {
         this.getExpiration = this.getExpiration.bind(this);
         this.getPlayersByUsername = this.getPlayersByUsername.bind(this);
         this.getPlayerBySteamID = this.getPlayerBySteamID.bind(this);
+        this.serveBanList = this.serveBanList.bind(this);
 
-        this.broadcast = (msg) => { this.server.rcon.broadcast(msg); };
-        this.warn = (steamid, msg) => { this.server.rcon.warn(steamid, msg); };
+        this.broadcast = this.server.rcon.broadcast;
+        this.warn = this.server.rcon.warn;
         this.kick = (steamid, reason) => { this.server.rcon.execute(`AdminKick ${steamid} ${reason}`) }
+    }
+
+    serveBanList() {
+        let socketIo = this.server.plugins.find(p => p instanceof SocketIOAPI);
+
+        socketIo.httpServer.on('request', async (req, res) => {
+            if (req.method == 'GET' && req.url == this.options.banListHttpPath) {
+                const ban = (await this.models.Bans.findAll()).map(b => `${b.steamID}:${+b.expiration} // [${b.username}] ${this.formatReason(b)}`).join('\n');
+                res.write(ban)
+                res.end();
+            }
+        })
     }
 
     async mount() {
         this.verbose(1, 'Mounted.');
         this.server.on('CHAT_MESSAGE', this.onChatMessage);
         this.server.on('PLAYER_CONNECTED', this.onPlayerConnected);
+
+        if (this.options.enableBanListHosting) this.serveBanList();
     }
 
     async unmount() {
