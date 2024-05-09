@@ -1,4 +1,4 @@
-## SquadJS Switch Plugin
+## Ban Manager Plugin
 BanManager plugin for SquadJS.
 
 ### Example configuration
