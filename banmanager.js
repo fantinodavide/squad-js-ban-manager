@@ -142,33 +142,37 @@ export default class BanManager extends DiscordBasePlugin {
 
     async onChatMessage(info) {
         const { steamID, name: playerName } = info;
-        const message = info.message.toLowerCase();
+        const message = info.message;
         const isAdmin = info.chat === "ChatAdmin";
-
-        if (!message.startsWith(this.options.commandPrefix.toLowerCase())) return;
 
         if (!isAdmin) return;
 
+        const regex = new RegExp(`${this.options.commandPrefix} (?<subcommand>\\w+)? ?(?<playerId>("[^"]+")|(\\w+))? ?(?<duration>[\\d\\.]+)? ?(?<reason>.+)?`, 'i');
+        const res = regex.exec(message);
+
+        if (!res) return;
+
         this.verbose(1, 'Command', message)
 
-        const commandSplit = message.substring(this.options.commandPrefix.length).trim().split(' ');
-        const subCommand = commandSplit[ 0 ];
+        // const commandSplit = message.substring(this.options.commandPrefix.length).trim().split(' ');
+        const subCommand = res.groups.subcommand;
+        const playerId = res.groups?.playerId;
 
         switch (subCommand) {
             case 'add':
                 if (!isAdmin) return;
                 let banPlayers = [];
-                const banPlayerSteamID = commandSplit[ 1 ].length == 17 ? this.getPlayerBySteamID(commandSplit[ 1 ]) : null;
+                const banPlayerSteamID = playerId.length == 17 ? this.getPlayerBySteamID(playerId) : null;
 
-                if (!banPlayerSteamID) banPlayers = this.getPlayersByUsername(commandSplit[ 1 ]);
+                if (!banPlayerSteamID) banPlayers = this.getPlayersByUsername(playerId);
                 else banPlayers.push(banPlayerSteamID);
 
                 if (banPlayers.length == 0) {
-                    this.warn(steamID, `Could not find a player whose ${banPlayerSteamID ? "SteamID is" : "username includes"}: "${commandSplit[ 1 ]}"`)
+                    this.warn(steamID, `Could not find a player whose ${banPlayerSteamID ? "SteamID is" : "username includes"}: "${playerId}"`)
                     return;
                 }
                 if (banPlayers.length > 1) {
-                    this.warn(steamID, `Found multiple players whose usernames include: "${commandSplit[ 1 ]}"`)
+                    this.warn(steamID, `Found multiple players whose usernames include: "${playerId}"`)
                     return;
                 }
                 const player = banPlayers[ 0 ];
@@ -177,10 +181,10 @@ export default class BanManager extends DiscordBasePlugin {
                     return;
                 }
 
-                this.addBan(steamID, player.name, player.steamID, this.getExpiration(commandSplit[ 2 ].replace(/d|h/gi, '')), commandSplit.slice(3).join(' '));
+                this.addBan(steamID, player.name, player.steamID, this.getExpiration(+res.groups?.duration), res.groups?.reason);
                 break;
             case 'remove':
-                if (await this.removeBan(commandSplit[ 1 ]))
+                if (await this.removeBan(playerId))
                     this.warn(steamID, `Successfully removed ban`)
                 else
                     this.warn(steamID, `Could not remove ban`)
@@ -240,7 +244,7 @@ export default class BanManager extends DiscordBasePlugin {
         return ban;
     }
     async removeBan(banID) {
-        return await this.models.Bans.destroy({ where: { [ Op.or ]: { id: +banId, steamID: `${banID}` } }, force: true })
+        return await this.models.Bans.destroy({ where: { [ Op.or ]: { id: banID, steamID: `${banID}`, username: { [ Op.like ]: `%${banID}%` } } }, force: true })
     }
 
 
